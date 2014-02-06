@@ -24,11 +24,16 @@
 #include "NatController.h"
 #include "PppController.h"
 #include "PanController.h"
-#include "SoftapController.h"
 #include "BandwidthController.h"
 #include "IdletimerController.h"
 #include "ResolverController.h"
 #include "SecondaryTableController.h"
+
+#ifdef ENABLE_STE_CHANGES
+#include "SoftapController_ste.h"
+#else
+#include "SoftapController.h"
+#endif
 
 class CommandListener : public FrameworkListener {
     static TetherController *sTetherCtrl;

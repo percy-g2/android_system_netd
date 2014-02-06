@@ -41,10 +41,6 @@
 
 #include "SoftapController.h"
 
-#ifndef HOSTAPD_DRIVER_NAME
-#define HOSTAPD_DRIVER_NAME "nl80211"
-#endif
-
 static const char HOSTAPD_CONF_FILE[]    = "/data/misc/wifi/hostapd.conf";
 
 SoftapController::SoftapController() {
@@ -132,11 +128,7 @@ int SoftapController::startDriver(char *iface) {
     }
 
     *mBuf = 0;
-#ifdef LGE_SOFTAP
-    ret = setCommand(iface, "START-SOFTAP");
-#else
     ret = setCommand(iface, "START");
-#endif
     if (ret < 0) {
         ALOGE("Softap driver start: %d", ret);
         return ret;
@@ -171,11 +163,7 @@ int SoftapController::stopDriver(char *iface) {
         ALOGE("Softap %s down: %d", iface, ret);
     }
 #endif
-#ifdef LGE_SOFTAP
-    ret = setCommand(iface, "STOP-SOFTAP");
-#else
     ret = setCommand(iface, "STOP");
-#endif
     ALOGD("Softap driver stop: %d", ret);
     return ret;
 }
@@ -200,13 +188,9 @@ int SoftapController::startSoftap() {
 #endif
     if (!pid) {
 #ifdef HAVE_HOSTAPD
-#ifndef HOSTAPD_NO_ENTROPY
         ensure_entropy_file_exists();
-#endif
         if (execl("/system/bin/hostapd", "/system/bin/hostapd",
-#ifndef HOSTAPD_NO_ENTROPY
                   "-e", WIFI_ENTROPY_FILE,
-#endif
                   HOSTAPD_CONF_FILE, (char *) NULL)) {
             ALOGE("execl failed (%s)", strerror(errno));
         }
@@ -308,7 +292,7 @@ int SoftapController::setSoftap(int argc, char *argv[]) {
         ssid = (char *)"AndroidAP";
     }
 
-    asprintf(&wbuf, "interface=%s\ndriver=" HOSTAPD_DRIVER_NAME "\nctrl_interface="
+    asprintf(&wbuf, "interface=%s\ndriver=nl80211\nctrl_interface="
             "/data/misc/wifi/hostapd\nssid=%s\nchannel=6\nieee80211n=1\n",
             iface, ssid);
 

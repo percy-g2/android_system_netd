@@ -33,6 +33,8 @@
 
 #include "TetherController.h"
 
+#include "NetdStateReport_ste.h"
+
 TetherController::TetherController() {
     mInterfaces = new InterfaceCollection();
     mDnsForwarders = new NetAddressCollection();
@@ -96,15 +98,10 @@ bool TetherController::getIpFwdEnabled() {
     return (enabled  == '1' ? true : false);
 }
 
-int TetherController::startTethering(int num_addrs, struct in_addr* addrs, int lease_time) {
+int TetherController::startTethering(int num_addrs, struct in_addr* addrs) {
     if (mDaemonPid != 0) {
         ALOGE("Tethering already started");
         errno = EBUSY;
-        return -1;
-    }
-
-    if (lease_time <= 0) {
-        ALOGE("Invalid lease time %d!\n", lease_time);
         return -1;
     }
 
@@ -153,7 +150,7 @@ int TetherController::startTethering(int num_addrs, struct in_addr* addrs, int l
         for (int addrIndex=0; addrIndex < num_addrs;) {
             char *start = strdup(inet_ntoa(addrs[addrIndex++]));
             char *end = strdup(inet_ntoa(addrs[addrIndex++]));
-            asprintf(&(args[nextArg++]),"--dhcp-range=%s,%s,%d", start, end, lease_time);
+            asprintf(&(args[nextArg++]),"--dhcp-range=%s,%s,1h", start, end);
         }
 
         if (execv(args[0], args)) {
@@ -166,6 +163,7 @@ int TetherController::startTethering(int num_addrs, struct in_addr* addrs, int l
         close(pipefd[0]);
         mDaemonPid = pid;
         mDaemonFd = pipefd[1];
+        sendTetheringStateReport(true); /*sending tethering ON event to MAD */
         ALOGD("Tethering services running");
     }
 
@@ -186,6 +184,7 @@ int TetherController::stopTethering() {
     mDaemonPid = 0;
     close(mDaemonFd);
     mDaemonFd = -1;
+    sendTetheringStateReport(false); /*sending tethering OFF event to MAD */
     ALOGD("Tethering services stopped");
     return 0;
 }

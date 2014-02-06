@@ -76,7 +76,7 @@ int NatController::setupIptablesHooks() {
     runCmd(IPTABLES_PATH, "-D FORWARD -j natctrl_FORWARD");
     runCmd(IPTABLES_PATH, "-F natctrl_FORWARD");
     runCmd(IPTABLES_PATH, "-N natctrl_FORWARD");
-    if (runCmd(IPTABLES_PATH, "-I FORWARD -j natctrl_FORWARD"))
+    if (runCmd(IPTABLES_PATH, "-A FORWARD -j natctrl_FORWARD"))
         return -1;
 
     runCmd(IPTABLES_PATH, "-t nat -D POSTROUTING -j natctrl_nat_POSTROUTING");
@@ -94,9 +94,6 @@ int NatController::setDefaults() {
         return -1;
     if (runCmd(IPTABLES_PATH, "-t nat -F natctrl_nat_POSTROUTING"))
         return -1;
-
-    // May not be supported by kernel, so don't worry about errors.
-    runCmd(IPTABLES_PATH, "-t mangle -F FORWARD");
 
     runCmd(IP_PATH, "rule flush");
     runCmd(IP_PATH, "-6 rule flush");
@@ -145,6 +142,9 @@ int NatController::enableNat(const int argc, char **argv) {
             ret |= secondaryTableCtrl->modifyFromRule(tableNumber, ADD, argv[5+i]);
 
             ret |= secondaryTableCtrl->modifyLocalRoute(tableNumber, ADD, intIface, argv[5+i]);
+            /*we can ignore this return as the route already exists */
+            if(ret == 512)
+                ret = 0;
         }
         runCmd(IP_PATH, "route flush cache");
     }
@@ -185,9 +185,6 @@ int NatController::enableNat(const int argc, char **argv) {
             setDefaults();
             return -1;
         }
-
-        if (runCmd(IPTABLES_PATH, "-t mangle -A FORWARD -p tcp --tcp-flags SYN,RST SYN -j TCPMSS --clamp-mss-to-pmtu"))
-            ALOGW("Unable to set TCPMSS rule (may not be supported by kernel).");
     }
 
     return 0;
